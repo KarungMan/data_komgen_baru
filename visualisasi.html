@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Gene Pathogenicity Score (D3.js)</title>
+    <!-- Memuat library D3.js dari CDN -->
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        /* CSS untuk styling dasar dan tooltip */
+        body {
+            font-family: sans-serif;
+        }
+
+        #chart {
+            width: 100%;
+        }
+
+        .axis-label text {
+            text-anchor: end; /* Rata kanan agar tidak menabrak sumbu */
+        }
+        
+        /* Styling untuk Tooltip */
+        .tooltip {
+            position: absolute; /* Penting agar bisa diposisikan dengan mouse */
+            text-align: center;
+            width: auto;
+            height: auto;
+            padding: 8px;
+            font: 12px sans-serif;
+            background: lightsteelblue;
+            border: 0px;
+            border-radius: 8px;
+            pointer-events: none; /* Penting agar mouse event bisa tembus ke elemen di bawahnya */
+            opacity: 0; /* Sembunyikan secara default */
+            transition: opacity 0.2s;
+        }
+    </style>
+</head>
+
+<body>
+
+    <h1>Gene Pathogenicity Score</h1>
+    <p>Visualisasi skor patogenisitas untuk setiap varian gen. Arahkan mouse ke sebuah gen untuk melihat detail.</p>
+
+    <!-- Container untuk visualisasi D3.js -->
+    <div id="chart"></div>
+    
+    <!-- Elemen div untuk tooltip -->
+    <div class="tooltip"></div>
+
+    <script>
+        // === PENGATURAN DASAR D3.JS ===
+        const margin = { top: 20, right: 30, bottom: 120, left: 40 };
+        const width = 1200 - margin.left - margin.right;
+        const height = 200 - margin.top - margin.bottom;
+
+        // Membuat SVG container di dalam div #chart
+        const svg = d3.select("#chart")
+            .append("svg")
+            .attr("width", width + margin.left + margin.right)
+            .attr("height", height + margin.top + margin.bottom)
+            .append("g")
+            .attr("transform", `translate(${margin.left}, ${margin.top})`);
+            
+        // Memilih elemen tooltip
+        const tooltip = d3.select(".tooltip");
+
+        // URL data JSON Anda
+        const dataURL = "https://raw.githubusercontent.com/KarungMan/data_komgen_baru/main/Komgen.json";
+
+        // === MEMUAT DAN MERENDER DATA ===
+        d3.json(dataURL).then(function(data) {
+
+            // === MEMBUAT SKALA (SCALES) ===
+
+            // 1. Skala X: untuk memetakan nama gen (domain) ke posisi horizontal (range)
+            const xScale = d3.scaleBand()
+                .domain(data.map(d => d.group)) // Domain: array semua nama gen
+                .range([0, width])
+                .padding(0.05);
+
+            // 2. Skala Warna: untuk memetakan skor value (domain) ke rentang warna (range)
+            const colorScale = d3.scaleLinear()
+                .domain([-50, 0, 100]) // Domain: min, mid, max dari skor
+                .range(["#6590e6", "#ffffff", "#F75976"]); // Range: warna yang sesuai
+
+            // === MENGGAMBAR SUMBU X ===
+            svg.append("g")
+                .attr("class", "axis-label")
+                .attr("transform", `translate(0, ${height})`)
+                .call(d3.axisBottom(xScale))
+                .selectAll("text")
+                .attr("transform", "translate(-10,0)rotate(-45)")
+                .style("text-anchor", "end");
+
+            // === MENGGAMBAR HEATMAP 1D (PERSEGI PANJANG) ===
+            svg.selectAll("rect")
+                .data(data)
+                .enter()
+                .append("rect")
+                .attr("x", d => xScale(d.group))
+                .attr("y", 0)
+                .attr("width", xScale.bandwidth())
+                .attr("height", height)
+                .style("fill", d => colorScale(d.value))
+                .style("stroke-width", 1)
+                .style("stroke", "#ccc")
+                // === INTERAKSI TOOLTIP ===
+                .on("mouseover", function(event, d) {
+                    tooltip.transition()
+                        .style("opacity", .9);
+                    tooltip.html(`
+                        <strong>Gene:</strong> ${d.group}<br/>
+                        <strong>Score:</strong> ${d.value.toFixed(2)}<br/>
+                        <strong>Classification:</strong> ${d.classification}
+                    `)
+                        .style("left", (event.pageX + 10) + "px")
+                        .style("top", (event.pageY - 28) + "px");
+                })
+                .on("mouseout", function(d) {
+                    tooltip.transition()
+                        .style("opacity", 0);
+                });
+
+        }).catch(function(error){
+           // Menampilkan error jika data gagal dimuat
+           d3.select("#chart").text("Gagal memuat data. Periksa URL atau koneksi internet.");
+           console.log(error);
+        });
+
+    </script>
+
+</body>
+</html>
